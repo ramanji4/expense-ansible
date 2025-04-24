@@ -5,9 +5,11 @@
     mysql_root_password: ExpenseApp@1
     login_host: mysql.ram4india.space
   tasks:
-  - name: installing pymysql
+  - name: installing mysql packages
     ansible.builtin.pip:
-      name: PyMySQL
+      name:
+      - PyMySQL
+      - cryptography
       executable: pip3.9
 
   - name: installing mysql server
