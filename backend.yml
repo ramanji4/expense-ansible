@@ -1,0 +1,65 @@
+- name: backend configuration
+  hosts: backend
+  become: yes
+  vars:
+    login_host: mysql.ram4india.space
+    mysql_root_password: ExpenseApp@1
+  tasks:
+  - name: disabling default nodejs
+    ansible.builtin.command: dnf module disable nodejs -y
+  
+  - name: enabling nodejs:20
+    ansible.builtin.command: dnf module enable nodejs:20 -y
+
+  - name: installing nodejs
+    ansible.builtin.package:
+      name: "{{ item }}"
+      state: present
+    loop: 
+    - nodejs
+    - mysql
+
+  - name: creating a user
+    ansible.builtin.user:
+      name: expense
+    
+  - name: creating a directory
+    ansible.builtin.file:
+      name: /app
+      state: directory
+
+  - name: Downloading the backend code
+    ansible.builtin.get_url: 
+      url: https://expense-builds.s3.us-east-1.amazonaws.com/expense-backend-v2.zip
+      dest: /tmp/backend.zip
+
+  - name: Extracting the file 
+    ansible.builtin.unarchive:
+      src: /tmp/backend.zip
+      dest: /app
+      remote_src: yes
+
+  - name: installing dependencies
+    community.general.npm:
+      path: /app
+    
+  - name: coping a file into a designated path
+    ansible.builtin.copy:
+      src: backend.service
+      dest: /etc/systemd/system/backend.service
+
+  - name: loading transactions schema
+    community.mysql.mysql_db:
+      login_host: "{{ login_host }}"
+      login_password: "{{ mysql_root_password }}"
+      login_user: root
+    target: /app/schema/backend.sql
+    name: all
+    state: import
+
+  - name: restarting backend service
+    ansible.builtin.systemd_service:
+      name: backend
+      daemon_relaod: true
+      state: restarted
+      enabled: yes 
